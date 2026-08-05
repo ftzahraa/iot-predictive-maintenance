@@ -1,0 +1,17 @@
+# Generated Data Files (regeneratable via generate_data.py / pipeline)
+sensor_data.csv
+sensor_data_clean.parquet/
+daily_averages.parquet/
+flagged_data.parquet/
+
+# Python virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Spark local metadata
+metastore_db/
+derby.log
+spark-warehouse/
