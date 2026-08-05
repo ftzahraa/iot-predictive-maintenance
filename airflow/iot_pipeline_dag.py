@@ -1,6 +1,7 @@
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from datetime import datetime
+from airflow.sdk import DAG
+from airflow.providers.standard.operators.python import PythonOperator
+from datetime import datetime, timedelta
+
 
 def generate_data():
     print("Simulating: Generate sensor data")
@@ -20,14 +21,26 @@ def aggregate_daily():
 def detect_anomalies():
     print("Simulating: Anomaly detection")
 
-def visualize():
+def visualise():
     print("Simulating: Generate visualisations")
+
+
+def on_task_failure(context):
+    print(f"ALERT: Task {context['task_instance'].task_id} failed in DAG {context['dag'].dag_id}")
+
+
+default_args = {
+    "retries": 2,
+    "retry_delay": timedelta(minutes=2),
+    "on_failure_callback": on_task_failure,
+}
 
 with DAG(
     dag_id="iot_predictive_maintenance_pipeline",
     start_date=datetime(2026, 1, 1),
-    schedule=None,
+    schedule="@daily",
     catchup=False,
+    default_args=default_args,
     tags=["iot", "spark", "portfolio"],
 ) as dag:
 
@@ -37,6 +50,6 @@ with DAG(
     t4 = PythonOperator(task_id="clean_data", python_callable=clean_data)
     t5 = PythonOperator(task_id="aggregate_daily", python_callable=aggregate_daily)
     t6 = PythonOperator(task_id="detect_anomalies", python_callable=detect_anomalies)
-    t7 = PythonOperator(task_id="visualize", python_callable=visualize)
+    t7 = PythonOperator(task_id="visualise", python_callable=visualise)
 
     t1 >> t2 >> t3 >> t4 >> t5 >> t6 >> t7
