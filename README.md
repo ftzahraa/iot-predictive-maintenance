@@ -6,7 +6,7 @@ A PySpark pipeline that simulates industrial sensor data from rotating machinery
 Ireland has a strong industrial IoT base, and vibration/temperature monitoring on rotating machinery is one of the most common real predictive maintenance setups in use today. Companies like Lumina run this kind of monitoring at Irish manufacturing sites such as Mergon Group. This project builds a simplified but genuinely standards-grounded version of that same idea.
 
 ## What it does
-Thirty days of sensor readings get simulated across 20 machines, with the usual mess real sensors produce baked in: missing readings, duplicate transmissions, the odd glitchy value. Three of the machines are seeded with a slow-developing bearing fault, so their vibration and temperature climb together over time, the way an actual failing bearing behaves. A PySpark pipeline then ingests all of it, cleans it up, aggregates it daily, and flags anything that crosses into real ISO 20816-3 danger territory. The whole thing runs end to end from one command.
+Thirty days of sensor readings get simulated across 20 machines, with the usual mess real sensors produce baked in: missing readings, duplicate transmissions, the odd glitchy value. Three of the machines are seeded with a slow-developing bearing fault, so their vibration and temperature climb together over time, the way an actual failing bearing behaves. A PySpark pipeline then ingests all of it, cleans it up, aggregates it daily, and flags anything that crosses into real ISO 20816-3 danger territory. The whole thing runs end to end from one command, and the same seven stages have also been rebuilt as an Apache Airflow DAG (see [`airflow/`](./airflow/)), using the orchestration tool that shows up repeatedly in real data engineering job postings.
 
 ## Pipeline stages
 1. **Generate data**: simulate the sensor readings, mess included
@@ -25,6 +25,7 @@ The three machines seeded with a fault (3, 11, and 17) were exactly the ones the
 - Python for the data simulation and orchestration
 - Matplotlib / Seaborn for the charts
 - Parquet between pipeline stages
+- Apache Airflow (via Docker) for a second, industry-standard orchestration layer
 
 ## How to run
 ```
@@ -35,6 +36,7 @@ That runs all seven stages back-to-back. To check the results afterwards without
 ```
 python inspect_results.py
 ```
+For the Airflow version of the same pipeline, see [`airflow/README.md`](./airflow/README.md).
 
 **A note for Windows users:** PySpark needs Java 17 or 21, plus a Hadoop `winutils.exe` and `hadoop.dll` for file writing, with `JAVA_HOME` and `HADOOP_HOME` both set. This caused most of the real trouble during setup; see the notes below.
 
@@ -49,6 +51,8 @@ Automation broke in a more interesting way: an `input()` prompt added during dev
 
 There was also a version mismatch between PySpark and a very new pandas release, which meant `toPandas()` was falling back to a slower conversion path until PyArrow got installed properly.
 
+Setting up Airflow brought its own round of this. Installing it directly with pip isn't reliably supported on Windows, so Docker was the way in, which meant installing Docker Desktop, which needed WSL2, which wasn't installed yet either. A `wsl --install` and a restart later, Docker started up properly and the rest followed Apache's own setup guide without much trouble.
+
 ## Data quality, checked against what was actually injected
 The messiness built into the data landed almost exactly where it was supposed to: about 2% missing values (2.0% actual), about 1% duplicates (0.98% actual), about 0.5% sensor glitches (0.49% actual). That match is itself a useful sanity check; it confirms the cleaning pipeline is genuinely catching what it should, not just running without errors.
 
@@ -56,7 +60,7 @@ The messiness built into the data landed almost exactly where it was supposed to
 This simulation simplifies real sensor behaviour on purpose, for the sake of clarity. Real degrading bearings are noisier and less linear than the smooth climb modelled here, and real deployments deal with things this version doesn't touch: clock drift, irregular reporting intervals, more than one kind of fault happening at once. The thresholds and the underlying failure physics are real and standards-based; the data generation is a reasonable simplification of them, not a claim that this is exactly what a factory floor looks like.
 
 ## Next steps
-- Move orchestration from this lightweight script to Apache Airflow
+- Connect the Airflow DAG to the real PySpark scripts, rather than the placeholder tasks it currently runs
 - Push the pipeline outputs to cloud storage
 - Add a statistical outlier-detection layer alongside the threshold-based one
 - Build a version with messier, less idealised sensor behaviour
