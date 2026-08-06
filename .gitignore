@@ -1,4 +1,4 @@
-# Generated Data Files (regeneratable via generate_data.py / pipeline)
+# Generated data files (regeneratable via generate_data.py / pipeline)
 sensor_data.csv
 sensor_data_clean.parquet/
 daily_averages.parquet/
@@ -15,3 +15,7 @@ __pycache__/
 metastore_db/
 derby.log
 spark-warehouse/
+
+# Environment/secrets files
+.env
+*.env
