@@ -1,0 +1,7 @@
+apache-airflow-providers-microsoft-azure
+pyspark==4.2.0
+pandas
+matplotlib
+seaborn
+pyarrow
+azure-storage-blob
