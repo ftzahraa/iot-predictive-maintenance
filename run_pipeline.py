@@ -10,6 +10,7 @@ STAGES = [
     ("Clean the Data", "03_clean_data.py"),
     ("Daily Aggregation Analysis", "04_analysis.py"),
     ("Anomaly Detection", "05_anomaly_detection.py"),
+    ("Statistical baseline deviation analysis", "08_statistical_analysis.py"),
     ("Generate Visualisations", "06_visualise.py"),
 ]
 
