@@ -15,7 +15,7 @@ FAULTY_MACHINES = [3, 11, 17]
 
 pdf = daily_avg.toPandas()
 
-# Chart 1: Vibratio Trend Over Time, All Machines
+# Chart 1: Vibration Trend Over Time, All Machines
 plt.figure(figsize=(12, 6))
 
 for machine_id in sorted(pdf["MachineID"].unique()):
@@ -70,6 +70,34 @@ plt.axhline(y=4.5, color='gray', linestyle='--', linewidth=0.8)
 plt.tight_layout()
 plt.savefig("max_vibration_by_machine.png", dpi=150)
 print("Saved: max_vibration_by_machine.png")
+plt.close()
+
+# Chart 3: Z-score Trend Over Time, Per-machine Baseline Deviation
+scored = spark.read.parquet("statistical_analysis.parquet")
+scored_pdf = scored.toPandas()
+
+plt.figure(figsize=(12, 6))
+
+for machine_id in sorted(scored_pdf["MachineID"].unique()):
+    machine_data = scored_pdf[scored_pdf["MachineID"] == machine_id].sort_values("Date")
+    if machine_id in FAULTY_MACHINES:
+        plt.plot(machine_data["Date"], machine_data["ZScore"],
+                 color='red', linewidth=2, label=f"Machine {machine_id} (Faulty)")
+    else:
+        plt.plot(machine_data["Date"], machine_data["ZScore"],
+                 color='lightgray', linewidth=0.8)
+
+plt.axhline(y=3, color='blue', linestyle='--', linewidth=1, label="Z-score = 3 (Statistical Threshold)")
+plt.axhline(y=-3, color='blue', linestyle='--', linewidth=1)
+
+plt.title("Per-Machine Baseline Deviation (Z-score) Over 30 Days")
+plt.xlabel("Date")
+plt.ylabel("Z-score (Standard Deviations From Own Baseline)")
+plt.xticks(rotation=45)
+plt.legend(loc="upper left", fontsize=8)
+plt.tight_layout()
+plt.savefig("zscore_trend.png", dpi=150)
+print("Saved: zscore_trend.png")
 plt.close()
 
 spark.stop()
