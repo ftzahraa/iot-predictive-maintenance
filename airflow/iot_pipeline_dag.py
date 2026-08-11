@@ -58,16 +58,21 @@ with DAG(
         on_failure_callback=make_failure_alert("anomaly detection failed, no fault alerts will be raised today"),
     )
     t7 = BashOperator(
+        task_id="statistical_analysis",
+        bash_command=f"cd {SCRIPTS_DIR} && python 08_statistical_analysis.py",
+        on_failure_callback=make_failure_alert("statistical baseline deviation analysis failed"),
+    )
+    t8 = BashOperator(
         task_id="visualise",
         bash_command=f"cd {SCRIPTS_DIR} && python 06_visualise.py",
         on_failure_callback=make_failure_alert("chart generation failed"),
     )
-    t8 = BashOperator(
+    t9 = BashOperator(
         task_id="upload_to_cloud",
         bash_command=f"cd {SCRIPTS_DIR} && python 07_upload_to_cloud.py",
         on_failure_callback=make_failure_alert("cloud upload failed"),
     )
-    t9 = WasbBlobSensor(
+    t10 = WasbBlobSensor(
         task_id="verify_cloud_upload",
         container_name="iot-pipeline-data",
         blob_name="flagged_data.parquet/_SUCCESS",
@@ -76,4 +81,4 @@ with DAG(
         poke_interval=10,
     )
 
-    t1 >> t2 >> t3 >> t4 >> t5 >> t6 >> t7 >> t8 >> t9
+    t1 >> t2 >> t3 >> t4 >> t5 >> t6 >> t7 >> t8 >> t9 >> t10
