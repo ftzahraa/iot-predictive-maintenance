@@ -1,28 +1,7 @@
 from airflow.sdk import DAG
-from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.microsoft.azure.sensors.wasb import WasbBlobSensor
 from datetime import datetime, timedelta
-
-
-def generate_data():
-    print("Simulating: Generate Sensor Data")
-
-def explore_data():
-    print("Simulating: Explore Raw Data")
-
-def quality_check():
-    print("Simulating: Data Quality Check")
-
-def clean_data():
-    print("Simulating: Clean the Data")
-
-def aggregate_daily():
-    print("Simulating: Daily Aggregation")
-
-def detect_anomalies():
-    print("Simulating: Anomaly Detection")
-
-def visualise():
-    print("Simulating: Generate Visualisations")
 
 
 def make_failure_alert(description):
@@ -31,6 +10,8 @@ def make_failure_alert(description):
         print(f"ALERT: '{task_id}' failed ({description}). Check logs for details.")
     return alert
 
+
+SCRIPTS_DIR = "/opt/airflow/scripts"
 
 default_args = {
     "retries": 2,
@@ -46,40 +27,53 @@ with DAG(
     tags=["iot", "spark", "portfolio"],
 ) as dag:
 
-    t1 = PythonOperator(
+    t1 = BashOperator(
         task_id="generate_data",
-        python_callable=generate_data,
-        on_failure_callback=make_failure_alert("Sensor data could not be generated!"),
+        bash_command=f"cd {SCRIPTS_DIR} && python generate_data.py",
+        on_failure_callback=make_failure_alert("sensor data could not be generated"),
     )
-    t2 = PythonOperator(
+    t2 = BashOperator(
         task_id="explore_data",
-        python_callable=explore_data,
-        on_failure_callback=make_failure_alert("Raw data exploration failed, check the source file exists."),
+        bash_command=f"cd {SCRIPTS_DIR} && python 01_explore_data.py",
+        on_failure_callback=make_failure_alert("raw data exploration failed, check the source file exists"),
     )
-    t3 = PythonOperator(
+    t3 = BashOperator(
         task_id="quality_check",
-        python_callable=quality_check,
-        on_failure_callback=make_failure_alert("Data quality check failed!"),
+        bash_command=f"cd {SCRIPTS_DIR} && python 02_data_quality_check.py",
+        on_failure_callback=make_failure_alert("data quality check failed"),
     )
-    t4 = PythonOperator(
+    t4 = BashOperator(
         task_id="clean_data",
-        python_callable=clean_data,
-        on_failure_callback=make_failure_alert("Data cleaning failed, downstream stages will use stale data."),
+        bash_command=f"cd {SCRIPTS_DIR} && python 03_clean_data.py",
+        on_failure_callback=make_failure_alert("data cleaning failed, downstream stages will use stale data"),
     )
-    t5 = PythonOperator(
+    t5 = BashOperator(
         task_id="aggregate_daily",
-        python_callable=aggregate_daily,
-        on_failure_callback=make_failure_alert("Daily aggregation failed!"),
+        bash_command=f"cd {SCRIPTS_DIR} && python 04_analysis.py",
+        on_failure_callback=make_failure_alert("daily aggregation failed"),
     )
-    t6 = PythonOperator(
+    t6 = BashOperator(
         task_id="detect_anomalies",
-        python_callable=detect_anomalies,
-        on_failure_callback=make_failure_alert("Anomaly detection failed, no fault alerts will be raised today."),
+        bash_command=f"cd {SCRIPTS_DIR} && python 05_anomaly_detection.py",
+        on_failure_callback=make_failure_alert("anomaly detection failed, no fault alerts will be raised today"),
     )
-    t7 = PythonOperator(
+    t7 = BashOperator(
         task_id="visualise",
-        python_callable=visualise,
-        on_failure_callback=make_failure_alert("Chart generation failed!"),
+        bash_command=f"cd {SCRIPTS_DIR} && python 06_visualise.py",
+        on_failure_callback=make_failure_alert("chart generation failed"),
+    )
+    t8 = BashOperator(
+        task_id="upload_to_cloud",
+        bash_command=f"cd {SCRIPTS_DIR} && python 07_upload_to_cloud.py",
+        on_failure_callback=make_failure_alert("cloud upload failed"),
+    )
+    t9 = WasbBlobSensor(
+        task_id="verify_cloud_upload",
+        container_name="iot-pipeline-data",
+        blob_name="flagged_data.parquet/_SUCCESS",
+        wasb_conn_id="azure_blob_default",
+        timeout=60,
+        poke_interval=10,
     )
 
-    t1 >> t2 >> t3 >> t4 >> t5 >> t6 >> t7
+    t1 >> t2 >> t3 >> t4 >> t5 >> t6 >> t7 >> t8 >> t9
